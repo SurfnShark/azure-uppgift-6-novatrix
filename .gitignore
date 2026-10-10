@@ -1,0 +1,6 @@
+*.pdf
+v39/evidence/
+*.local.json
+*.local.env
+.env
+__pycache__/

@@ -1,0 +1,14 @@
+{
+  "displayName": "Ärenderegister",
+  "columns": [
+    {"name": "TicketId", "displayName": "Ärendenummer", "required": true, "enforceUniqueValues": true, "indexed": true, "text": {"maxLength": 32}},
+    {"name": "KundNamn", "displayName": "Kundens namn", "required": true, "text": {"maxLength": 100}},
+    {"name": "KundEpost", "displayName": "Kundens e-post", "required": true, "text": {"maxLength": 254}},
+    {"name": "Meddelande", "displayName": "Meddelande", "required": true, "text": {"allowMultipleLines": true, "textType": "plain"}},
+    {"name": "BilagaBlob", "displayName": "Bilaga i Azure", "text": {"maxLength": 200}},
+    {"name": "ArendeStatus", "displayName": "Ärendestatus", "required": true, "choice": {"choices": ["Ny", "Pågår", "Avklarat"], "allowTextEntry": false}},
+    {"name": "TeamsNotified", "displayName": "Teams-notis skickad", "boolean": {}},
+    {"name": "MailNotified", "displayName": "Mejl skickat", "boolean": {}}
+  ],
+  "list": {"template": "genericList"}
+}

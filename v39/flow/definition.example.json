@@ -1,0 +1,217 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    },
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "metadata": {},
+      "type": "Request",
+      "kind": "Http",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "id",
+            "name",
+            "email",
+            "message",
+            "attachment"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "type": "string",
+              "enum": [
+                "1.0"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "email": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 254
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "attachment": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 200
+            }
+          }
+        },
+        "triggerAuthenticationType": "All"
+      },
+      "runtimeConfiguration": {
+        "concurrency": {
+          "runs": 1
+        }
+      }
+    }
+  },
+  "actions": {
+    "Get_items": {
+      "runAfter": {},
+      "type": "OpenApiConnection",
+      "inputs": {
+        "parameters": {
+          "dataset": "https://YOUR_TENANT.sharepoint.com",
+          "table": "YOUR_LIST_ID",
+          "$filter": "TicketId eq '@{triggerBody()?['id']}'",
+          "$top": 1
+        },
+        "host": {
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+          "connectionName": "shared_sharepointonline",
+          "operationId": "GetItems"
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    },
+    "Condition": {
+      "actions": {
+        "Create_item": {
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://YOUR_TENANT.sharepoint.com",
+              "table": "YOUR_LIST_ID",
+              "item/TicketId": "@triggerBody()?['id']",
+              "item/KundNamn": "@triggerBody()?['name']",
+              "item/KundEpost": "@triggerBody()?['email']",
+              "item/Meddelande": "@triggerBody()?['message']",
+              "item/Title": "Novatrix ärende @{triggerBody()?['id']}",
+              "item/BilagaBlob": "@coalesce(triggerBody()?['attachment'], '')",
+              "item/ArendeStatus/Value": "Ny",
+              "item/TeamsNotified": false,
+              "item/MailNotified": false
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PostItem"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Send_an_email_(V2)": {
+          "runAfter": {
+            "Create_item": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "emailMessage/To": "kundtjanst@example.com",
+              "emailMessage/Subject": "Novatrix – nytt ärende @{triggerBody()?['id']}",
+              "emailMessage/Body": "<p class=\"editor-paragraph\">Ett nytt labbärende finns i SharePoint.<br>Ärendenummer: @{triggerBody()?['id']}<br>Öppna Ärenderegister: https://YOUR_TENANT.sharepoint.com/Lists/renderegister/AllItems.aspx<br>Bilagan finns i privat Azure-lagring.</p>",
+              "emailMessage/Importance": "Normal"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+              "connectionName": "shared_office365",
+              "operationId": "SendEmailV2"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Post_message_in_a_chat_or_channel": {
+          "runAfter": {
+            "Send_an_email_(V2)": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "poster": "Flow bot",
+              "location": "Channel",
+              "body/recipient/groupId": "YOUR_TEAM_ID",
+              "body/recipient/channelId": "YOUR_CHANNEL_ID",
+              "body/messageBody": "<p class=\"editor-paragraph\">Nytt Novatrix-ärende: @{triggerBody()?['id']}<br>Ärendet finns i SharePoint: https://YOUR_TENANT.sharepoint.com/Lists/renderegister/AllItems.aspx<br>Bilagan ligger kvar i privat Azure-lagring.</p>"
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams",
+              "connectionName": "shared_teams",
+              "operationId": "PostMessageToConversation"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Update_item": {
+          "runAfter": {
+            "Post_message_in_a_chat_or_channel": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "parameters": {
+              "dataset": "https://YOUR_TENANT.sharepoint.com",
+              "table": "YOUR_LIST_ID",
+              "id": "@outputs('Create_item')?['body/ID']",
+              "item/TicketId": "@triggerBody()?['id']",
+              "item/KundNamn": "@triggerBody()?['name']",
+              "item/KundEpost": "@triggerBody()?['email']",
+              "item/Meddelande": "@triggerBody()?['message']",
+              "item/ArendeStatus/Value": "Ny",
+              "item/TeamsNotified": true,
+              "item/MailNotified": true
+            },
+            "host": {
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline",
+              "connectionName": "shared_sharepointonline",
+              "operationId": "PatchItem"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "runAfter": {
+        "Get_items": [
+          "Succeeded"
+        ]
+      },
+      "else": {
+        "actions": {}
+      },
+      "expression": {
+        "and": [
+          {
+            "equals": [
+              "@length(body('Get_items')?['value'])",
+              0
+            ]
+          }
+        ]
+      },
+      "type": "If"
+    }
+  },
+  "outputs": {}
+}

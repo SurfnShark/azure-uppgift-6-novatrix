@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "email",
+    "message",
+    "attachment"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 32
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "email": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 254
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "attachment": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    }
+  }
+}
